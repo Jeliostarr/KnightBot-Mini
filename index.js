@@ -191,6 +191,8 @@ async function startBot() {
   const sessionFolder = `./${config.sessionName}`;
   const sessionFile = path.join(sessionFolder, 'creds.json')
 
+// In your bot's index.js file - replace the existing session handling block with this:
+
 if (config.sessionID && config.sessionID.startsWith('DEVSPACE~')) {
   try {
     const [header, b64data] = config.sessionID.split('~')
@@ -209,17 +211,23 @@ if (config.sessionID && config.sessionID.startsWith('DEVSPACE~')) {
     // Ensure session directory exists
     fs.mkdirSync(sessionFolder, { recursive: true })
 
-    // Only write if creds.json does not already exist
-    if (!fs.existsSync(sessionFile)) {
-      fs.writeFileSync(sessionFile, decoded, 'utf8')
-      console.log('📡 Session : 🔑 Retrieved from DEVSPACE session')
-    } else {
-      console.log('📡 Session : ℹ️ creds.json already exists, skipping overwrite')
-    }
+    // CRITICAL FIX: ALWAYS write the session - overwrite if exists
+    // The session ID from environment should always take precedence
+    fs.writeFileSync(sessionFile, decoded, 'utf8')
+    console.log('📡 Session : 🔑 Session written from DEVSPACE environment variable')
+
+    // Optional: Verify the file was written correctly
+    const fileSize = fs.statSync(sessionFile).size;
+    console.log(`📡 Session : 📁 Session file size: ${fileSize} bytes`);
 
   } catch (e) {
     console.error('📡 Session : ❌ Error processing DEVSPACE session:', e.message)
+    console.error('📡 Session : ⚠️ Bot may not connect if no valid session exists')
   }
+} else if (!config.sessionID) {
+  console.log('📡 Session : ℹ️ No SESSION_ID provided, expecting existing session folder');
+} else if (!config.sessionID.startsWith('DEVSPACE~')) {
+  console.log('📡 Session : ⚠️ SESSION_ID provided but not in DEVSPACE format');
 }
 
   const { state, saveCreds } = await useMultiFileAuthState(sessionFolder);
