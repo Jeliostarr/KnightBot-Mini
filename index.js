@@ -189,35 +189,38 @@ const createSuppressedLogger = (level = 'silent') => {
 // Main connection function
 async function startBot() {
   const sessionFolder = `./${config.sessionName}`;
-  const sessionFile = path.join(sessionFolder, 'creds.json');
+  const sessionFile = path.join(sessionFolder, 'creds.json')
 
-  // Check if sessionID is provided and process KnightBot! format session
-  if (config.sessionID && config.sessionID.startsWith('KnightBot!')) {
-    try {
-      const [header, b64data] = config.sessionID.split('!');
+if (config.sessionID && config.sessionID.startsWith('DEVSPACE~')) {
+  try {
+    const [header, b64data] = config.sessionID.split('~')
 
-      if (header !== 'KnightBot' || !b64data) {
-        throw new Error("❌ Invalid session format. Expected 'KnightBot!.....'");
-      }
-
-      const cleanB64 = b64data.replace('...', '');
-      const compressedData = Buffer.from(cleanB64, 'base64');
-      const decompressedData = zlib.gunzipSync(compressedData);
-
-      // Ensure session folder exists
-      if (!fs.existsSync(sessionFolder)) {
-        fs.mkdirSync(sessionFolder, { recursive: true });
-      }
-
-      // Write decompressed session data to creds.json
-      fs.writeFileSync(sessionFile, decompressedData, 'utf8');
-      console.log('📡 Session : 🔑 Retrieved from KnightBot Session');
-
-    } catch (e) {
-      console.error('📡 Session : ❌ Error processing KnightBot session:', e.message);
-      // Continue with normal QR flow if session processing fails
+    if (header !== 'DEVSPACE' || !b64data) {
+      throw new Error("Invalid session format. Expected 'DEVSPACE~<base64>'")
     }
+
+    // Decode Base64 → JSON
+    const decoded = Buffer.from(b64data, 'base64').toString('utf8')
+
+    if (!decoded.trim().startsWith('{')) {
+      throw new Error('Invalid session payload: not JSON')
+    }
+
+    // Ensure session directory exists
+    fs.mkdirSync(sessionFolder, { recursive: true })
+
+    // Only write if creds.json does not already exist
+    if (!fs.existsSync(sessionFile)) {
+      fs.writeFileSync(sessionFile, decoded, 'utf8')
+      console.log('📡 Session : 🔑 Retrieved from DEVSPACE session')
+    } else {
+      console.log('📡 Session : ℹ️ creds.json already exists, skipping overwrite')
+    }
+
+  } catch (e) {
+    console.error('📡 Session : ❌ Error processing DEVSPACE session:', e.message)
   }
+}
 
   const { state, saveCreds } = await useMultiFileAuthState(sessionFolder);
   const { version } = await fetchLatestBaileysVersion();
